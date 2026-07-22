@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火星農場數據彙整系統</title>
+    <style>
+        :root {
+            --ghibli-green: #a8d5ba;
+            --ghibli-blue: #bae1ff;
+            --ghibli-yellow: #fdfd96;
+            --ghibli-orange: #ffccbc;
+            --ghibli-brown: #8d6e63;
+            --ghibli-cream: #f9f7f2;
+            --ghibli-text: #4e342e;
+            --ghibli-red: #ef5350;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+            background-color: var(--ghibli-cream);
+            color: var(--ghibli-text);
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(180deg, var(--ghibli-blue) 0%, var(--ghibli-cream) 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 950px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            border: 2px solid white;
+        }
+
+        h1, h2 { text-align: center; color: var(--ghibli-brown); margin-bottom: 20px; }
+
+        .btn {
+            background-color: var(--ghibli-green);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin: 5px;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); opacity: 0.9; }
+        .btn-home { background-color: var(--ghibli-brown); }
+        .btn-mars { background-color: #ff8a65; }
+        .btn-history { background-color: #9575cd; }
+        .btn-sort { background-color: #4db6ac; }
+
+        .nav-bar { display: flex; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; border-bottom: 1px dashed var(--ghibli-green); padding-bottom: 20px; }
+
+        /* 檔案上傳區 */
+        .file-upload-area {
+            border: 3px dashed var(--ghibli-green);
+            padding: 60px;
+            border-radius: 20px;
+            background: white;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        /* 缺損資料報告框 (第二層) */
+        #defectNotice {
+            background-color: #fff3e0;
+            border: 2px solid #ffb74d;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: none;
+        }
+        .defect-title {
+            color: #e65100;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .defect-list {
+            font-size: 0.9rem;
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.5);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .defect-warning {
+            color: var(--ghibli-red);
+            font-weight: bold;
+            text-decoration: underline;
+            margin-top: 10px;
+            display: block;
+            text-align: center;
+        }
+
+        /* 作物卡片 */
+        .crop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .crop-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .crop-card:hover { border-color: var(--ghibli-green); transform: scale(1.05); background: #fffde7; }
+        .crop-icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+
+        /* 表格樣式 */
+        .table-container { overflow-x: auto; margin-top: 10px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        th { background-color: var(--ghibli-green); color: white; padding: 15px; font-weight: normal; }
+        td { padding: 12px; border-bottom: 1px solid #f0f0f0; text-align: center; }
+        .rating-badge {
+            background: var(--ghibli-yellow);
+            color: #d84315;
+            padding: 4px 12px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 第一層：資料匯入 -->
+    <div id="layer1">
+        <h1>🌿 森林實驗室：數據導入</h1>
+        <p style="text-align:center">請上傳您的作物生長 CSV 檔案</p>
+        <div class="file-upload-area">
+            <input type="file" id="csvInput" accept=".csv">
+        </div>
+    </div>
+
+    <!-- 第二層：功能主頁 -->
+    <div id="layer2" class="hidden">
+        <div class="nav-bar">
+            <button class="btn btn-home" onclick="showLayer(1)">重新導入新資料</button>
+            <button class="btn btn-mars" onclick="renderLayer4()">火星土壤分析</button>
+            <button class="btn btn-history" onclick="renderLayer5()">歷史記憶紀錄</button>
+        </div>
+
+        <!-- 缺損資料公告欄 -->
+        <div id="defectNotice">
+            <div class="defect-title">⚠️ 數據健康檢查報告</div>
+            <div id="defectList" class="defect-list"></div>
+            <span class="defect-warning">⚠ 注意：上述缺損資料列將不列入統計、分析及歷史紀錄。</span>
+        </div>
+
+        <h2>作物種類索引</h2>
+        <div class="crop-grid" id="cropGrid"></div>
+    </div>
+
+    <!-- 第三層：作物詳細表格 -->
+    <div id="layer3" class="hidden">
+        <button class="btn btn-home" onclick="showLayer(2)">⬅ 返回作物索引</button>
+        <h2 id="layer3Title">作物詳細數據</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>評分</th><th>日期</th><th>艙段</th><th>氮</th><th>磷</th><th>鉀</th></tr>
+                </thead>
+                <tbody id="layer3TableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 第四層：火星分析 -->
+    <div id="layer4" class="hidden">
+        <div class="nav-bar">
+            <button class="btn btn-home" onclick="showLayer(1)">重新導入新資料</button>
+            <button class="btn" onclick="showLayer(2)">返回索引</button>
+        </div>
+        <h2>🚀 適合火星土壤的最佳作物 (評分 > 8)</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>評分</th><th>作物</th><th>日期</th><th>氮</th><th>磷</th><th>鉀</th><th>艙段</th></tr>
+                </thead>
+                <tbody id="layer4TableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 第五層：歷史紀錄 -->
+    <div id="layer5" class="hidden">
+        <div class="nav-bar">
+            <button class="btn btn-home" onclick="showLayer(1)">重新導入新資料</button>
+            <button class="btn" onclick="showLayer(2)">返回索引</button>
+            <button class="btn btn-sort" onclick="sortHistory()">切換評分排序</button>
+        </div>
+        <h2>📜 歷史紀錄彙整 (不重複)</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>評分</th><th>作物</th><th>日期</th><th>氮</th><th>磷</th><th>鉀</th></tr>
+                </thead>
+                <tbody id="layer5TableBody"></tbody>
+            </table>
+        </div>
+        <div style="text-align:center; margin-top:20px;">
+            <button class="btn" style="background:#e57373" onclick="clearHistory()">清空歷史紀錄</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let rawData = [];
+    let historyData = JSON.parse(localStorage.getItem('marsCropHistoryV3')) || [];
+    const headers = ["日期", "艙段", "氮", "磷", "鉀", "作物", "評分"];
+    const cropIcons = {"羽衣甘藍":"🥬","小麥":"🌾","馬鈴薯":"🥔","番茄":"🍅","菠菜":"🌿","藻類":"🧪","大豆":"🫘","甘藷":"🍠","預設":"🌱"};
+
+    document.getElementById('csvInput').addEventListener('change', handleFile);
+
+    function handleFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => processCSV(event.target.result);
+        reader.readAsText(file);
+    }
+
+    function processCSV(text) {
+        const lines = text.split(/\r?\n/);
+        const errors = [];
+        const cleanedData = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = line.split(',').map(v => v.trim());
+            let hasMissing = false;
+            let missingFields = [];
+
+            for (let j = 0; j < headers.length; j++) {
+                if (values[j] === undefined || values[j] === "") {
+                    missingFields.push(headers[j]);
+                    hasMissing = true;
+                }
+            }
+
+            if (hasMissing) {
+                errors.push(`第 ${i + 1} 行：[${missingFields.join(', ')}] 資料缺損`);
+            } else {
+                cleanedData.push({
+                    date: values[0], chamber: values[1], n: values[2],
+                    p: values[3], k: values[4], crop: values[5],
+                    rating: parseFloat(values[6])
+                });
+            }
+        }
+
+        // 更新警示框
+        const defectNotice = document.getElementById('defectNotice');
+        const defectList = document.getElementById('defectList');
+        if (errors.length > 0) {
+            defectNotice.style.display = 'block';
+            defectList.innerHTML = errors.map(err => `<div>• ${err}</div>`).join('');
+        } else {
+            defectNotice.style.display = 'none';
+        }
+
+        if (cleanedData.length > 0) {
+            rawData = cleanedData;
+            saveToHistory(cleanedData.filter(d => d.rating > 8));
+            renderCropButtons();
+            showLayer(2);
+        } else {
+            alert("檔案內無完整可用數據，請檢查 CSV 格式。");
+        }
+    }
+
+    function saveToHistory(newItems) {
+        newItems.forEach(item => {
+            const isDuplicate = historyData.some(h => 
+                h.date === item.date && h.crop === item.crop && h.chamber === item.chamber &&
+                h.n === item.n && h.p === item.p && h.k === item.k && h.rating === item.rating
+            );
+            if (!isDuplicate) historyData.push(item);
+        });
+        localStorage.setItem('marsCropHistoryV3', JSON.stringify(historyData));
+    }
+
+    function renderCropButtons() {
+        const grid = document.getElementById('cropGrid');
+        grid.innerHTML = '';
+        const crops = [...new Set(rawData.map(item => item.crop))];
+        crops.forEach(crop => {
+            const card = document.createElement('div');
+            card.className = 'crop-card';
+            card.innerHTML = `<span class="crop-icon">${cropIcons[crop] || cropIcons["預設"]}</span><b>${crop}</b>`;
+            card.onclick = () => renderLayer3(crop);
+            grid.appendChild(card);
+        });
+    }
+
+    function renderLayer3(cropName) {
+        document.getElementById('layer3Title').innerText = `${cropIcons[cropName] || ''} ${cropName} 生長數據排行`;
+        const tbody = document.getElementById('layer3TableBody');
+        tbody.innerHTML = '';
+        const filtered = rawData.filter(d => d.crop === cropName).sort((a, b) => b.rating - a.rating);
+        filtered.forEach(row => {
+            tbody.innerHTML += `<tr><td><span class="rating-badge">${row.rating}</span></td><td>${row.date}</td><td>${row.chamber}</td><td>${row.n}</td><td>${row.p}</td><td>${row.k}</td></tr>`;
+        });
+        showLayer(3);
+    }
+
+    function renderLayer4() {
+        const tbody = document.getElementById('layer4TableBody');
+        tbody.innerHTML = '';
+        const bestCrops = rawData.filter(d => d.rating > 8).sort((a, b) => b.rating - a.rating);
+        bestCrops.forEach(row => {
+            tbody.innerHTML += `<tr><td><span class="rating-badge">${row.rating}</span></td><td>${row.crop}</td><td>${row.date}</td><td>${row.n}</td><td>${row.p}</td><td>${row.k}</td><td>${row.chamber}</td></tr>`;
+        });
+        showLayer(4);
+    }
+
+    function renderLayer5() {
+        const tbody = document.getElementById('layer5TableBody');
+        tbody.innerHTML = '';
+        historyData.forEach(row => {
+            tbody.innerHTML += `<tr><td><span class="rating-badge">${row.rating}</span></td><td>${row.crop}</td><td>${row.date}</td><td>${row.n}</td><td>${row.p}</td><td>${row.k}</td></tr>`;
+        });
+        showLayer(5);
+    }
+
+    let historySortDesc = true;
+    function sortHistory() {
+        historySortDesc = !historySortDesc;
+        historyData.sort((a, b) => historySortDesc ? b.rating - a.rating : a.rating - b.rating);
+        renderLayer5();
+    }
+
+    function clearHistory() {
+        if(confirm("確定要清除所有存儲的歷史資料嗎？")) {
+            historyData = [];
+            localStorage.removeItem('marsCropHistoryV3');
+            renderLayer5();
+        }
+    }
+
+    function showLayer(num) {
+        for (let i = 1; i <= 5; i++) {
+            document.getElementById('layer' + i).classList.toggle('hidden', i !== num);
+        }
+        if(num === 1) document.getElementById('csvInput').value = '';
+    }
+</script>
+
+</body>
+</html>
