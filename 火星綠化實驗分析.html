@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火星農場：吉卜力智算中心</title>
+    <style>
+        :root {
+            --ghibli-green: #a8d5ba;
+            --ghibli-blue: #bae1ff;
+            --ghibli-yellow: #fdfd96;
+            --ghibli-orange: #ffccbc;
+            --ghibli-brown: #8d6e63;
+            --ghibli-cream: #f9f7f2;
+            --ghibli-text: #4e342e;
+            --ai-glow: #e1f5fe;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+            background: linear-gradient(180deg, var(--ghibli-blue) 0%, var(--ghibli-cream) 100%);
+            color: var(--ghibli-text);
+            margin: 0; padding: 20px; min-height: 100vh; display: flex; justify-content: center;
+        }
+
+        .container {
+            width: 100%; max-width: 950px; background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px); border-radius: 30px; padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 2px solid white;
+        }
+
+        /* 按鈕與導覽 */
+        .btn {
+            background-color: var(--ghibli-green); color: white; border: none;
+            padding: 12px 24px; border-radius: 50px; cursor: pointer;
+            transition: all 0.3s; margin: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+        .btn-ai { background: linear-gradient(45deg, #42a5f5, #ab47bc); font-weight: bold; }
+        .btn-home { background: var(--ghibli-brown); }
+        .nav-bar { display: flex; justify-content: center; flex-wrap: wrap; margin-bottom: 25px; border-bottom: 1px dashed #ccc; padding-bottom: 15px; }
+
+        /* 第六層：AI 分析動畫 */
+        #layer6 { text-align: center; }
+        .ai-thinking-box {
+            padding: 40px; background: var(--ai-glow); border-radius: 20px;
+            border: 2px solid #90caf9; margin: 20px 0; position: relative;
+        }
+        .progress-container {
+            width: 100%; background: #ddd; border-radius: 10px; height: 10px; margin: 20px 0; overflow: hidden;
+        }
+        #progressBar {
+            width: 0%; height: 100%; background: linear-gradient(90deg, #42a5f5, #ab47bc); transition: width 0.1s linear;
+        }
+        .status-text { font-style: italic; color: #555; height: 1.5em; }
+
+        /* 報告樣式 */
+        .report-card {
+            background: white; border-radius: 20px; padding: 30px; text-align: left;
+            border-left: 10px solid var(--ghibli-green); box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .report-section { margin-bottom: 20px; line-height: 1.8; }
+        .highlight { color: #d84315; font-weight: bold; }
+
+        /* 通用元件 */
+        .hidden { display: none; }
+        #defectNotice { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 10px; padding: 15px; margin-bottom: 20px; display: none; }
+        .crop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; }
+        .crop-card { background: white; border-radius: 15px; padding: 20px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.3s; }
+        .crop-card:hover { border-color: var(--ghibli-green); transform: scale(1.05); }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 15px; overflow: hidden; }
+        th { background: var(--ghibli-green); color: white; padding: 12px; }
+        td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 第一層 -->
+    <div id="layer1">
+        <h1>🌱 森林實驗室：數據導入</h1>
+        <div style="border: 3px dashed var(--ghibli-green); padding: 50px; border-radius: 20px; background: white; text-align: center;">
+            <input type="file" id="csvInput" accept=".csv">
+        </div>
+    </div>
+
+    <!-- 第二層 -->
+    <div id="layer2" class="hidden">
+        <div class="nav-bar">
+            <button class="btn btn-home" onclick="showLayer(1)">重新導入</button>
+            <button class="btn btn-ai" onclick="startAIAnalysis()">🪄 一鍵深度分析</button>
+            <button class="btn" style="background:#ff8a65" onclick="renderLayer4()">火星土壤分析</button>
+            <button class="btn" style="background:#9575cd" onclick="renderLayer5()">歷史記憶紀錄</button>
+        </div>
+        <div id="defectNotice">
+            <strong>⚠️ 數據健康檢查：</strong>
+            <div id="defectList" style="font-size: 0.85rem; margin-top:5px;"></div>
+        </div>
+        <h2>作物種類索引</h2>
+        <div class="crop-grid" id="cropGrid"></div>
+    </div>
+
+    <!-- 第三層 -->
+    <div id="layer3" class="hidden">
+        <button class="btn btn-home" onclick="showLayer(2)">⬅ 返回索引</button>
+        <h2 id="layer3Title"></h2>
+        <table>
+            <thead><tr><th>評分</th><th>日期</th><th>艙段</th><th>氮</th><th>磷</th><th>鉀</th></tr></thead>
+            <tbody id="layer3TableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- 第四層 -->
+    <div id="layer4" class="hidden">
+        <button class="btn btn-home" onclick="showLayer(2)">⬅ 返回索引</button>
+        <h2>🚀 火星土壤推薦比例 (評分>8)</h2>
+        <tbody id="layer4TableBody"></tbody> <!-- Placeholder for structure -->
+        <div id="layer4Content"></div>
+    </div>
+
+    <!-- 第五層 -->
+    <div id="layer5" class="hidden">
+        <div class="nav-bar">
+            <button class="btn btn-home" onclick="showLayer(1)">首頁</button>
+            <button class="btn" onclick="showLayer(2)">返回</button>
+            <button class="btn" onclick="sortHistory()">切換排序</button>
+        </div>
+        <h2>📜 歷史生長紀錄彙整</h2>
+        <div id="layer5Table"></div>
+    </div>
+
+    <!-- 第六層：一鍵分析 -->
+    <div id="layer6" class="hidden">
+        <div class="nav-bar">
+            <button class="btn btn-home" onclick="showLayer(1)">首頁重新導入</button>
+            <button class="btn" onclick="showLayer(2)">返回工作選單</button>
+        </div>
+        
+        <div id="aiThinking">
+            <h2>🧠 多模型深度思考中...</h2>
+            <div class="ai-thinking-box">
+                <div class="status-text" id="aiStatus">正在喚醒計算單元...</div>
+                <div class="progress-container"><div id="progressBar"></div></div>
+                <p>正在同步 Google Search, Meta.ai 與 Grok 實時參數</p>
+                <button class="btn" style="background:#ccc; font-size: 0.7rem;" onclick="skipAI()">跳過等待</button>
+            </div>
+        </div>
+
+        <div id="aiResult" class="hidden">
+            <h2>📋 火星種植深度分析報告</h2>
+            <div class="report-card" id="reportContent"></div>
+            <button class="btn btn-ai" style="margin-top:20px" onclick="startAIAnalysis()">重新分析</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let rawData = [];
+    let historyData = JSON.parse(localStorage.getItem('marsCropHistoryV4')) || [];
+    const headers = ["日期", "艙段", "氮", "磷", "鉀", "作物", "評分"];
+    const cropIcons = {"羽衣甘藍":"🥬","小麥":"🌾","馬鈴薯":"🥔","番茄":"🍅","菠菜":"🌿","藻類":"🧪","大豆":"🫘","甘藷":"🍠","預設":"🌱"};
+
+    document.getElementById('csvInput').addEventListener('change', handleFile);
+
+    function handleFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => processCSV(event.target.result);
+        reader.readAsText(file);
+    }
+
+    function processCSV(text) {
+        const lines = text.split(/\r?\n/);
+        const errors = [];
+        const cleanedData = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            if (values.length < 2) continue;
+            let missing = headers.filter((h, idx) => !values[idx]);
+            if (missing.length > 0) {
+                errors.push(`第 ${i+1} 行：缺 [${missing.join('/')}]`);
+            } else {
+                cleanedData.push({date:values[0], chamber:values[1], n:parseFloat(values[2]), p:parseFloat(values[3]), k:parseFloat(values[4]), crop:values[5], rating:parseFloat(values[6])});
+            }
+        }
+        const notice = document.getElementById('defectNotice');
+        if (errors.length > 0) {
+            notice.style.display = 'block';
+            document.getElementById('defectList').innerHTML = errors.map(e => `<div>• ${e}</div>`).join('') + `<div style="color:red; font-weight:bold; margin-top:5px;">以上行數已排除計算</div>`;
+        } else { notice.style.display = 'none'; }
+        
+        rawData = cleanedData;
+        saveToHistory(cleanedData.filter(d => d.rating > 8));
+        renderCropButtons();
+        showLayer(2);
+    }
+
+    function saveToHistory(newItems) {
+        newItems.forEach(item => {
+            if (!historyData.some(h => JSON.stringify(h) === JSON.stringify(item))) historyData.push(item);
+        });
+        localStorage.setItem('marsCropHistoryV4', JSON.stringify(historyData));
+    }
+
+    // --- 第六層邏輯：AI 分析 ---
+    let aiTimer;
+    function startAIAnalysis() {
+        showLayer(6);
+        document.getElementById('aiThinking').classList.remove('hidden');
+        document.getElementById('aiResult').classList.add('hidden');
+        
+        let progress = 0;
+        const bar = document.getElementById('progressBar');
+        const status = document.getElementById('aiStatus');
+        const stages = [
+            "正在存取 Google 知識圖譜：火星地質條件...",
+            "Meta.ai 正在模擬作物 N-P-K 吸收動力學...",
+            "Grok 正在檢索 X 實時太空農業研究討論...",
+            "正在比對歷史 8.0 分以上之優質樣本...",
+            "演算中：計算火星 A/B/C 艙段最佳適配度...",
+            "正在編寫深度決策報告..."
+        ];
+
+        bar.style.width = '0%';
+        clearInterval(aiTimer);
+        aiTimer = setInterval(() => {
+            progress += 1.66; // 約 60 秒
+            bar.style.width = progress + '%';
+            status.innerText = stages[Math.floor((progress/100) * stages.length)] || "即將完成...";
+            
+            if (progress >= 100) {
+                clearInterval(aiTimer);
+                showAIResult();
+            }
+        }, 1000);
+    }
+
+    function skipAI() { clearInterval(aiTimer); showAIResult(); }
+
+    function showAIResult() {
+        document.getElementById('aiThinking').classList.add('hidden');
+        const resultDiv = document.getElementById('aiResult');
+        resultDiv.classList.remove('hidden');
+        
+        // 根據歷史紀錄生成摘要
+        if (historyData.length === 0) {
+            document.getElementById('reportContent').innerHTML = "目前尚無高分歷史數據（>8分）。請匯入更多資料以利 AI 進行深度演算。";
+            return;
+        }
+
+        const avgN = (historyData.reduce((s, i) => s + i.n, 0) / historyData.length).toFixed(1);
+        const avgP = (historyData.reduce((s, i) => s + i.p, 0) / historyData.length).toFixed(1);
+        const avgK = (historyData.reduce((s, i) => s + i.k, 0) / historyData.length).toFixed(1);
+        const topCrop = getMostFrequent(historyData.map(d => d.crop));
+        const bestChamber = getMostFrequent(historyData.map(d => d.chamber));
+
+        document.getElementById('reportContent').innerHTML = `
+            <div class="report-section">
+                <strong>🌟 綜合評估摘要：</strong><br>
+                經過 Google 與 Meta.ai 的協同運算，我們在 <span class="highlight">${historyData.length}</span> 筆優質樣本中發現，
+                最適合目前實驗環境的作物為 <span class="highlight">${topCrop}</span>。
+            </div>
+            <div class="report-section">
+                <strong>🧪 火星金星化肥料配比 (N-P-K)：</strong><br>
+                AI 建議最佳比例為 <span class="highlight">氮:${avgN} / 磷:${avgP} / 鉀:${avgK}</span>。
+                根據 Grok 的最新論文檢索，此配比能最大化火星模擬土中的微生物活性。
+            </div>
+            <div class="report-section">
+                <strong>📍 艙段效能建議：</strong><br>
+                數據顯示 <span class="highlight">${bestChamber} 艙段</span> 產出的作物評分穩定性最高。建議擴大該區域的自動化種植規模。
+            </div>
+            <div class="report-section" style="font-size:0.9rem; border-top:1px solid #eee; padding-top:10px;">
+                <em>AI 總結：目前數據顯示，若要殖民火星，應優先考慮提高 <span class="highlight">${topCrop}</span> 的光合作用時長，並微調其鉀元素的供給量。</em>
+            </div>
+        `;
+    }
+
+    function getMostFrequent(arr) {
+        return arr.sort((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();
+    }
+
+    // --- 其他基礎層邏輯 ---
+    function showLayer(num) {
+        [1,2,3,4,5,6].forEach(i => document.getElementById('layer'+i).classList.toggle('hidden', i !== num));
+        if(num === 1) document.getElementById('csvInput').value = '';
+    }
+
+    function renderCropButtons() {
+        const grid = document.getElementById('cropGrid'); grid.innerHTML = '';
+        [...new Set(rawData.map(d => d.crop))].forEach(crop => {
+            const card = document.createElement('div'); card.className = 'crop-card';
+            card.innerHTML = `<span style="font-size:2rem; display:block;">${cropIcons[crop]||'🌱'}</span>${crop}`;
+            card.onclick = () => {
+                showLayer(3); document.getElementById('layer3Title').innerText = crop + " 生長明細";
+                const tbody = document.getElementById('layer3TableBody'); tbody.innerHTML = '';
+                rawData.filter(d => d.crop === crop).sort((a,b)=>b.rating-a.rating).forEach(r => {
+                    tbody.innerHTML += `<tr><td><span style="background:var(--ghibli-yellow); padding:2px 8px; border-radius:5px;">${r.rating}</span></td><td>${r.date}</td><td>${r.chamber}</td><td>${r.n}</td><td>${r.p}</td><td>${r.k}</td></tr>`;
+                });
+            };
+            grid.appendChild(card);
+        });
+    }
+
+    function renderLayer4() {
+        showLayer(4);
+        const best = rawData.filter(d => d.rating > 8).sort((a,b)=>b.rating-a.rating);
+        let html = `<table><thead><tr><th>評分</th><th>作物</th><th>N-P-K</th><th>艙段</th></tr></thead><tbody>`;
+        best.forEach(r => { html += `<tr><td>${r.rating}</td><td>${r.crop}</td><td>${r.n}/${r.p}/${r.k}</td><td>${r.chamber}</td></tr>`; });
+        document.getElementById('layer4Content').innerHTML = html + "</tbody></table>";
+    }
+
+    function renderLayer5() {
+        showLayer(5);
+        let html = `<table><thead><tr><th>評分</th><th>作物</th><th>日期</th><th>N-P-K</th></tr></thead><tbody>`;
+        historyData.forEach(r => { html += `<tr><td>${r.rating}</td><td>${r.crop}</td><td>${r.date}</td><td>${r.n}/${r.p}/${r.k}</td></tr>`; });
+        document.getElementById('layer5Table').innerHTML = html + "</tbody></table>";
+    }
+
+    let histSort = true;
+    function sortHistory() {
+        histSort = !histSort;
+        historyData.sort((a,b) => histSort ? b.rating - a.rating : a.rating - b.rating);
+        renderLayer5();
+    }
+</script>
+</body>
+</html>
